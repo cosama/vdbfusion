@@ -55,6 +55,23 @@ public:
         Integrate(points, colors, origin, weighting_function);
     }
 
+    /// @brief Integrates a new (globally aligned) PointCloud into the current
+    /// tsdf_ volume. Not used by python, but useful for C++ projects.
+    void inline Integrate(const std::vector<Eigen::Vector3d>& points,
+                          const Eigen::Vector3d& origin,
+                          const std::function<float(float)>& weighting_function) {
+        Integrate(points, std::vector<Eigen::Vector3d>(), origin, weighting_function);
+    }
+
+    /// @brief Integrates a new (globally aligned) PointCloud into the current
+    /// tsdf_ volume. Not used by python, but useful for C++ projects.
+    void inline Integrate(const std::vector<Eigen::Vector3d>& points,
+                          const Eigen::Matrix4d& extrinsics,
+                          const std::function<float(float)>& weighting_function) {
+        const Eigen::Vector3d& origin = extrinsics.block<3, 1>(0, 3);
+        Integrate(points, std::vector<Eigen::Vector3d>(), origin, weighting_function);
+    }
+
     /// @brief Integrate incoming TSDF grid inside the current volume using the TSDF equations
     void Integrate(openvdb::FloatGrid::Ptr grid,
                    const std::function<float(float)>& weighting_function);
