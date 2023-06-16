@@ -22,8 +22,6 @@
 
 #include "VDBVolume.h"
 
-#include "Colors.h"
-
 // OpenVDB
 #include <openvdb/Types.h>
 #include <openvdb/math/DDA.h>
@@ -70,15 +68,20 @@ VDBVolume::VDBVolume(float voxel_size, float sdf_trunc, bool space_carving /* = 
     tsdf_->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size_));
     tsdf_->setGridClass(openvdb::GRID_LEVEL_SET);
 
-    weights_ = openvdb::FloatGrid::create(0.0f);
-    weights_->setName("W(x): weights grid");
-    weights_->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size_));
-    weights_->setGridClass(openvdb::GRID_UNKNOWN);
+    tsdf_weights_ = openvdb::FloatGrid::create(0.0f);
+    tsdf_weights_->setName("W(x): weights grid");
+    tsdf_weights_->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size_));
+    tsdf_weights_->setGridClass(openvdb::GRID_UNKNOWN);
 
     colors_ = openvdb::Vec3SGrid::create(openvdb::Vec3f(0.0f, 0.0f, 0.0f));
     colors_->setName("C(x): colors grid");
     colors_->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size_));
     colors_->setGridClass(openvdb::GRID_UNKNOWN);
+
+    colors_weights_ = openvdb::FloatGrid::create(0.0f);
+    colors_weights_->setName("W(x): weights grid");
+    colors_weights_->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size_));
+    colors_weights_->setGridClass(openvdb::GRID_UNKNOWN);
 }
 
 void VDBVolume::UpdateTSDF(const float& sdf,
@@ -87,15 +90,11 @@ void VDBVolume::UpdateTSDF(const float& sdf,
     using AccessorRW = openvdb::tree::ValueAccessorRW<openvdb::FloatTree>;
     if (sdf > -sdf_trunc_) {
         AccessorRW tsdf_acc = AccessorRW(tsdf_->tree());
-        AccessorRW weights_acc = AccessorRW(weights_->tree());
+        AccessorRW tsdf_weights_acc = AccessorRW(tsdf_weights_->tree());
         const float tsdf = std::min(sdf_trunc_, sdf);
         const float weight = weighting_function(sdf);
-        const float last_weight = weights_acc.getValue(voxel);
-        const float last_tsdf = tsdf_acc.getValue(voxel);
-        const float new_weight = weight + last_weight;
-        const float new_tsdf = (last_tsdf * last_weight + tsdf * weight) / (new_weight);
-        tsdf_acc.setValue(voxel, new_tsdf);
-        weights_acc.setValue(voxel, new_weight);
+        tsdf_acc.setValue(voxel, tsdf_acc.getValue(voxel) + tsdf * weight);
+        tsdf_weights_acc.setValue(voxel, tsdf_weights_acc.getValue(voxel) + weight);
     }
 }
 
@@ -128,8 +127,10 @@ void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
 
     // Get the "unsafe" version of the grid accessors
     auto tsdf_acc = tsdf_->getUnsafeAccessor();
-    auto weights_acc = weights_->getUnsafeAccessor();
+    auto tsdf_weights_acc = tsdf_weights_->getUnsafeAccessor();
     auto colors_acc = colors_->getUnsafeAccessor();
+    auto colors_weights_acc = colors_weights_->getUnsafeAccessor();
+
 
     // Iterate points
     for (size_t i = 0; i < points.size(); ++i) {
@@ -154,22 +155,13 @@ void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
             if (sdf > -sdf_trunc_) {
                 const float tsdf = std::min(sdf_trunc_, sdf);
                 const float weight = weighting_function(sdf);
-                const float last_weight = weights_acc.getValue(voxel);
-                const float last_tsdf = tsdf_acc.getValue(voxel);
-                const float new_weight = weight + last_weight;
-                const float new_tsdf = (last_tsdf * last_weight + tsdf * weight) / (new_weight);
-                tsdf_acc.setValue(voxel, new_tsdf);
-                weights_acc.setValue(voxel, new_weight);
+                tsdf_acc.setValue(voxel, tsdf_acc.getValue(voxel) + tsdf * weight);
+                tsdf_weights_acc.setValue(voxel, tsdf_weights_acc.getValue(voxel) + weight);
                 if (has_colors) {
-                    const auto pts_color = openvdb::Vec3f(colors[i][0], colors[i][1], colors[i][2]);
-                    if (pts_color.isFinite()) {      // no nan or infs
-                        auto new_color = pts_color;  // default is current color
-                        auto color = openvdb::Vec3f(0.0f, 0.0f, 0.0f);
-                        if (colors_acc.probeValue(voxel, color)) {  // only blend if active
-                            new_color = BlendColors(const_cast<const openvdb::Vec3f&>(color),
-                                                    last_weight, pts_color, weight);
-                        }
-                        colors_acc.setValue(voxel, new_color);
+                    openvdb::Vec3f color_vec(colors[i][0] * weight, colors[i][1] * weight, colors[i][2] * weight);
+                    if (color_vec.isFinite()) {      // no nan or infs
+                        colors_acc.setValue(voxel, colors_acc.getValue(voxel) + color_vec);
+                        colors_weights_acc.setValue(voxel, colors_weights_acc.getValue(voxel) + weight);
                     }
                 }
             }
@@ -178,7 +170,7 @@ void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
 }
 
 openvdb::FloatGrid::Ptr VDBVolume::Prune(float min_weight) const {
-    const auto weights = weights_->tree();
+    const auto weights = tsdf_weights_->tree();
     const auto tsdf = tsdf_->tree();
     const auto background = sdf_trunc_;
     openvdb::FloatGrid::Ptr clean_tsdf = openvdb::FloatGrid::create(sdf_trunc_);

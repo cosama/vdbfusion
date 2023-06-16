@@ -155,18 +155,18 @@ PYBIND11_MODULE(vdbfusion_pybind, m) {
         .def(
             "_write_vdb_grids",
             [](const VDBVolume& self, const std::string& filename) {
-                openvdb::io::File(filename).write({self.tsdf_, self.weights_});
+                openvdb::io::File(filename).write({self.tsdf_, self.tsdf_weights_});
             },
             "filename"_a)
         .def("get_tsdf", [](VDBVolume& self) { return py::make_tuple(ToNumpy(self.tsdf_), GetBBox(self.tsdf_)); })
-        .def("get_weights", [](VDBVolume& self) { return py::make_tuple(ToNumpy(self.weights_), GetBBox(self.weights_)); })
+        .def("get_weights", [](VDBVolume& self) { return py::make_tuple(ToNumpy(self.tsdf_weights_), GetBBox(self.tsdf_weights_)); })
 #ifndef PYOPENVDB_SUPPORT
         .def_property_readonly_static("PYOPENVDB_SUPPORT_ENABLED", [](py::object) { return false; })
 #else
         .def_property_readonly_static("PYOPENVDB_SUPPORT_ENABLED", [](py::object) { return true; })
         .def("_prune", &VDBVolume::Prune, "min_weight"_a)
         .def_readwrite("_tsdf", &VDBVolume::tsdf_)
-        .def_readwrite("_weights", &VDBVolume::weights_)
+        .def_readwrite("_weights", &VDBVolume::tsdf_weights_)
 #endif
         .def_readwrite("_voxel_size", &VDBVolume::voxel_size_)
         .def_readwrite("_sdf_trunc", &VDBVolume::sdf_trunc_)

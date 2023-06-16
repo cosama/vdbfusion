@@ -25,7 +25,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Colors.h"
 #include "MarchingCubesConst.h"
 #include "VDBVolume.h"
 
@@ -67,30 +66,34 @@ template <typename T, typename Y, typename C>
 int GetCubeIndex(const openvdb::Coord& voxel,
                  bool fill_holes,
                  float min_weight,
-                 Accessor<T>& weights_acc,
+                 Accessor<T>& tsdf_weights_acc,
                  Accessor<Y>& tsdf_acc,
+                 Accessor<T>& colors_weights_acc,
                  Accessor<C>& colors_acc,
                  float* vertex_tsdf,
-                 openvdb::Vec3f* colors) {
+                 openvdb::Vec4f* vertex_colors) {
     int cube_index = 0;
     // Iterate through all the 8 neighbour vertices...
     for (int vertex = 0; vertex < 8; vertex++) {
         openvdb::Coord idx = voxel + openvdb::shift[vertex];
+        float weight = tsdf_weights_acc.getValue(idx);
+        float tsdf = tsdf_acc.getValue(idx);
         if (!fill_holes) {
-            if (weights_acc.getValue(idx) == 0.0f) {
+            if (weight == 0.0f) {
                 cube_index = 0;
                 break;
             }
         }
-        if (weights_acc.getValue(idx) < min_weight) {
+        if (weight < min_weight) {
             cube_index = 0;
             break;
         }
-        vertex_tsdf[vertex] = tsdf_acc.getValue(idx);
-        colors[vertex] = colors_acc.getValue(idx);
-        if (vertex_tsdf[vertex] < 0.0f) {
+        if (tsdf < 0.0f) {
             cube_index |= (1 << vertex);
         }
+        vertex_tsdf[vertex] = tsdf / weight;
+        auto c = colors_acc.getValue(idx);
+        vertex_colors[vertex] = openvdb::Vec4f(c[0], c[1], c[2], colors_weights_acc.getValue(idx));
     }
     return cube_index;
 }
@@ -111,16 +114,17 @@ VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight) const {
 
     auto colors_acc = colors_->getAccessor();
     auto tsdf_acc = tsdf_->getAccessor();
-    auto weights_acc = weights_->getAccessor();
+    auto tsdf_weights_acc = tsdf_weights_->getAccessor();
+    auto colors_weights_acc = colors_weights_->getAccessor();
     for (auto iter = tsdf_->beginValueOn(); iter; ++iter) {
         float vertex_tsdf[8];
-        openvdb::Vec3f colors_field[8];
+        openvdb::Vec4f colors_field[8];
         const openvdb::Coord& voxel = iter.getCoord();
         const int32_t x = voxel.x();
         const int32_t y = voxel.y();
         const int32_t z = voxel.z();
-        int cube_index = GetCubeIndex(voxel, fill_holes, min_weight, weights_acc, tsdf_acc,
-                                      colors_acc, vertex_tsdf, colors_field);
+        int cube_index = GetCubeIndex(voxel, fill_holes, min_weight, tsdf_weights_acc, tsdf_acc,
+                                      colors_weights_acc, colors_acc, vertex_tsdf, colors_field);
         if (cube_index == 0 || cube_index == 255) {
             continue;
         }
@@ -146,13 +150,8 @@ VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight) const {
                     vertices.push_back(point /* + origin_*/);
                     const auto& source_color = colors_field[edge_to_vert[edge][SOURCE]];
                     const auto& destination_color = colors_field[edge_to_vert[edge][DEST]];
-                    openvdb::Vec3f current_color =
-                        BlendColors(source_color, destination_tsdf, destination_color, source_tsdf);
-                    Eigen::Vector3d color;
-                    color[0] = current_color[0];
-                    color[1] = current_color[1];
-                    color[2] = current_color[2];
-                    colors.push_back(color);
+                    openvdb::Vec3f mix_color = (source_color.getVec3() + destination_color.getVec3()) / (source_color[3] + destination_color[3]);
+                    colors.push_back({mix_color[0], mix_color[1], mix_color[2]});
                 } else {
                     edge_to_index[edge] = edgeindex_to_vertexindex.find(edge_index)->second;
                 }

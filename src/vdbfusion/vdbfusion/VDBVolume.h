@@ -93,8 +93,9 @@ public:
 public:
     /// OpenVDB Grids modeling the signed distance, weight and color
     openvdb::FloatGrid::Ptr tsdf_;
-    openvdb::FloatGrid::Ptr weights_;
-    openvdb::Vec3SGrid::Ptr colors_;
+    openvdb::FloatGrid::Ptr tsdf_weights_;
+    openvdb::Vec3fGrid::Ptr colors_;
+    openvdb::FloatGrid::Ptr colors_weights_;   
 
     /// VDBVolume public properties
     float voxel_size_;
