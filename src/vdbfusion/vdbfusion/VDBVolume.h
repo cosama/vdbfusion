@@ -42,8 +42,18 @@ public:
     /// tsdf_ volume.
     void Integrate(const std::vector<Eigen::Vector3d>& points,
                    const std::vector<Eigen::Vector3d>& colors,
+                   const std::vector<uint8_t>& labels,
                    const Eigen::Vector3d& origin,
                    const std::function<float(float)>& weighting_function);
+
+    /// @brief Integrates a new (globally aligned) PointCloud into the current
+    /// tsdf_ volume. Not used by python, but useful for C++ projects.
+    void Integrate(const std::vector<Eigen::Vector3d>& points,
+                   const std::vector<Eigen::Vector3d>& colors,
+                   const Eigen::Vector3d& origin,
+                   const std::function<float(float)>& weighting_function) {
+        Integrate(points, colors, std::vector<uint8_t>(), origin, weighting_function);
+    }
 
     /// @brief Integrates a new (globally aligned) PointCloud into the current
     /// tsdf_ volume. Not used by python, but useful for C++ projects.
@@ -87,7 +97,8 @@ public:
     /// @brief Extracts a TriangleMesh as the iso-surface in the actual volume
     [[nodiscard]] std::tuple<std::vector<Eigen::Vector3d>,
                              std::vector<Eigen::Vector3i>,
-                             std::vector<Eigen::Vector3d>>
+                             std::vector<Eigen::Vector3d>,
+                             std::vector<uint8_t>>
     ExtractTriangleMesh(bool fill_holes = true, float min_weight = 0.5) const;
 
 public:
@@ -95,7 +106,9 @@ public:
     openvdb::FloatGrid::Ptr tsdf_;
     openvdb::FloatGrid::Ptr tsdf_weights_;
     openvdb::Vec3fGrid::Ptr colors_;
-    openvdb::FloatGrid::Ptr colors_weights_;   
+    openvdb::FloatGrid::Ptr colors_weights_;
+    openvdb::Int64Grid::Ptr indices_;
+    std::vector<std::vector<uint8_t>> labels_store_;
 
     /// VDBVolume public properties
     float voxel_size_;

@@ -81,6 +81,7 @@ class VDBVolume:
         self,
         points: Optional[np.ndarray] = None,
         colors: Optional[np.ndarray] = None,
+        labels: Optional[np.ndarray] = None,
         extrinsic: Optional[np.ndarray] = None,
         grid: Optional[Any] = None,
         weight: Optional[float] = None,
@@ -115,11 +116,15 @@ class VDBVolume:
                 _colors = vdbfusion_pybind._VectorEigen3d(colors)
             else:
                 _colors = vdbfusion_pybind._VectorEigen3d(np.zeros((0, 3), dtype=np.float64))
+            if labels is not None:
+                _labels = np.array(labels, dtype=np.uint8)
+            else:
+                _labels = np.array([], dtype=np.uint8)
             if weighting_function is not None:
-                return self._volume._integrate(_points, _colors, extrinsic, weighting_function)
+                return self._volume._integrate(_points, _colors, _labels, extrinsic, weighting_function)
             if weight is not None:
-                return self._volume._integrate(_points, _colors, extrinsic, weight)
-            return self._volume._integrate(_points, _colors, extrinsic)
+                return self._volume._integrate(_points, _colors, _labels, extrinsic, weight)
+            return self._volume._integrate(_points, _colors, _labels, extrinsic)
 
     @overload
     def update_tsdf(
@@ -154,8 +159,8 @@ class VDBVolume:
         )
         mesh.vertex_colors = o3d.utility.Vector3dVector(colors)
         """
-        vertices, triangles, colors = self._volume._extract_triangle_mesh(fill_holes, min_weight)
-        return np.asarray(vertices), np.asarray(triangles), np.asarray(colors)
+        vertices, triangles, colors, labels = self._volume._extract_triangle_mesh(fill_holes, min_weight)
+        return np.asarray(vertices), np.asarray(triangles), np.asarray(colors), np.asarray(labels)
 
     def write_vdb_grids(self, out_file: str) -> None:
         """Write the internal map representation to a file.

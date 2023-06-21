@@ -69,7 +69,7 @@ VDBVolume::VDBVolume(float voxel_size, float sdf_trunc, bool space_carving /* = 
     tsdf_->setGridClass(openvdb::GRID_LEVEL_SET);
 
     tsdf_weights_ = openvdb::FloatGrid::create(0.0f);
-    tsdf_weights_->setName("W(x): weights grid");
+    tsdf_weights_->setName("TW(x): tsdf weights grid");
     tsdf_weights_->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size_));
     tsdf_weights_->setGridClass(openvdb::GRID_UNKNOWN);
 
@@ -79,9 +79,14 @@ VDBVolume::VDBVolume(float voxel_size, float sdf_trunc, bool space_carving /* = 
     colors_->setGridClass(openvdb::GRID_UNKNOWN);
 
     colors_weights_ = openvdb::FloatGrid::create(0.0f);
-    colors_weights_->setName("W(x): weights grid");
+    colors_weights_->setName("CW(x): color weights grid");
     colors_weights_->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size_));
     colors_weights_->setGridClass(openvdb::GRID_UNKNOWN);
+
+    indices_ = openvdb::Int64Grid::create(-1);
+    indices_->setName("I(x): indices grid");
+    indices_->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size_));
+    indices_->setGridClass(openvdb::GRID_UNKNOWN);
 }
 
 void VDBVolume::UpdateTSDF(const float& sdf,
@@ -109,6 +114,7 @@ void VDBVolume::Integrate(openvdb::FloatGrid::Ptr grid,
 
 void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
                           const std::vector<Eigen::Vector3d>& colors,
+                          const std::vector<uint8_t>& labels,
                           const Eigen::Vector3d& origin,
                           const std::function<float(float)>& weighting_function) {
     if (points.empty()) {
@@ -116,6 +122,7 @@ void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
         return;
     }
     bool has_colors = !colors.empty();
+    bool has_labels = !labels.empty();
     if (has_colors && points.size() != colors.size()) {
         std::cerr << "PointCloud and ColorCloud provided do not have the same size\n";
         return;
@@ -130,7 +137,7 @@ void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
     auto tsdf_weights_acc = tsdf_weights_->getUnsafeAccessor();
     auto colors_acc = colors_->getUnsafeAccessor();
     auto colors_weights_acc = colors_weights_->getUnsafeAccessor();
-
+    auto indices_acc = indices_->getUnsafeAccessor();
 
     // Iterate points
     for (size_t i = 0; i < points.size(); ++i) {
@@ -162,6 +169,14 @@ void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
                     if (color_vec.isFinite()) {      // no nan or infs
                         colors_acc.setValue(voxel, colors_acc.getValue(voxel) + color_vec);
                         colors_weights_acc.setValue(voxel, colors_weights_acc.getValue(voxel) + weight);
+                    }
+                }
+                if (has_labels) {
+                    bool is_active = indices_acc.isValueOn(voxel);
+                    if (is_active) labels_store_[indices_acc.getValue(voxel)].push_back(labels[i]);
+                    else {
+                        indices_acc.setValue(voxel, labels_store_.size());
+                        labels_store_.push_back({labels[i]});
                     }
                 }
             }
