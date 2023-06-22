@@ -72,9 +72,12 @@ uint8_t MostCommon(std::vector<uint8_t> store) {
             counts[*it] = 1;
         }
     }
-    return std::max_element(counts.begin(), counts.end(),
-            [] (const std::pair<uint8_t, int>& pair1, const std::pair<uint8_t, int>& pair2) {
-            return pair1.second < pair2.second;})->first;
+    uint8_t max_key = 255;
+    int max_count = 0;
+    for (auto c: counts) {
+        if (c.second > max_count) { max_key = c.first; max_count = c.second; }
+    }
+    return max_key;
 }
 
 template <typename T, typename Y, typename C, typename I>
@@ -177,18 +180,14 @@ VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight) const {
                     colors.push_back({mix_color[0], mix_color[1], mix_color[2]});
                     // labels
                     std::vector<uint8_t> all_labels;
-                    int ind = -1;
-                    ind = indices_field[edge_to_vert[edge][SOURCE]];
-                    if (ind > -1) {
-                        auto this_labels = labels_store_[indices_field[edge_to_vert[edge][SOURCE]]];
-                        all_labels.insert(all_labels.end(), this_labels.begin(), this_labels.end());
+                    for (auto a: {SOURCE, DEST}) {
+                        int ind = indices_field[edge_to_vert[edge][a]];
+                        if (ind > -1) {
+                            auto this_labels = labels_store_[indices_field[edge_to_vert[edge][a]]];
+                            all_labels.insert(all_labels.end(), this_labels.begin(), this_labels.end());
+                        }
                     }
-                    ind = indices_field[edge_to_vert[edge][DEST]];
-                    if (ind > -1) {
-                        auto this_labels = labels_store_[indices_field[edge_to_vert[edge][DEST]]];
-                        all_labels.insert(all_labels.end(), this_labels.begin(), this_labels.end());
-                    }
-                    if (all_labels.size() > 0) labels.push_back(MostCommon(all_labels));
+                    labels.push_back(MostCommon(all_labels));
                 } else {
                     edge_to_index[edge] = edgeindex_to_vertexindex.find(edge_index)->second;
                 }
