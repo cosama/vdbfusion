@@ -33,8 +33,8 @@ ExternalProject_Add(
   PREFIX openvdb
   # TODO: Update these once changes has been merged to upstream GIT_REPOSITORY
   # https://github.com/AcademySoftwareFoundation/openvdb.git
-  GIT_REPOSITORY https://github.com/nachovizzo/openvdb.git
-  GIT_TAG nacho/vdbfusion
+  GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openvdb.git
+  GIT_TAG v10.1.0
   GIT_SHALLOW ON
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>

@@ -37,7 +37,7 @@ if(NOT TARGET Eigen3::Eigen OR NOT TARGET OpenVDB::openvdb)
 endif()
 
 target_sources(vdbfusion PRIVATE MarchingCubes.cpp VDBVolume.cpp)
-target_compile_features(vdbfusion PUBLIC cxx_std_11)
+target_compile_features(vdbfusion PUBLIC cxx_std_17)
 target_compile_options(vdbfusion PRIVATE -Wall -Wextra)
 set_target_properties(vdbfusion PROPERTIES PUBLIC_HEADER "VDBVolume.h")
 target_include_directories(
