@@ -120,6 +120,21 @@ PYBIND11_MODULE(vdbfusion_pybind, m) {
                 self.Integrate(points, colors, labels, origin, [](float /*sdf*/) { return 1.0f; });
             },
             "points"_a, "colors"_a, "labels"_a, "origin"_a)
+        .def("_integrate_linear_weight",
+            [](VDBVolume& self, const std::vector<Eigen::Vector3d>& points,
+               const std::vector<Eigen::Vector3d>& colors,
+               const std::vector<uint8_t>& labels,
+               const Eigen::Vector3d& origin,
+               const float sdf_min,
+               const float sdf_max) {
+                self.Integrate(points, colors, labels, origin, [=](float sdf) {
+                    sdf = fabs(sdf);
+                    if(sdf <= sdf_min) return 1.0f;
+                    if(sdf >= sdf_max) return 0.0f;
+                    return (sdf_max - sdf) / (sdf_max - sdf_min);
+                });
+            },
+            "points"_a, "colors"_a, "labels"_a, "origin"_a, "sdf_min"_a, "sdf_max"_a)
 #ifdef PYOPENVDB_SUPPORT
         .def("_integrate",
              py::overload_cast<openvdb::FloatGrid::Ptr, const std::function<float(float)>&>(

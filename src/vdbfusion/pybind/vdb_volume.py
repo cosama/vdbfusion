@@ -77,6 +77,42 @@ class VDBVolume:
     def integrate(self, grid) -> None:
         ...
 
+    def integrate_linear_weight(
+        self,
+        points: Optional[np.ndarray] = None,
+        colors: Optional[np.ndarray] = None,
+        labels: Optional[np.ndarray] = None,
+        extrinsic: Optional[np.ndarray] = None,
+        min_sdf: float = None,
+        max_sdf: float = None,
+    ) -> None:
+        assert isinstance(points, np.ndarray), "points must by np.ndarray(n, 3)"
+        assert points.dtype == np.float64, "points dtype must be np.float64"
+        assert isinstance(extrinsic, np.ndarray), "origin/extrinsic must by np.ndarray"
+        assert extrinsic.dtype == np.float64, "origin/extrinsic dtype must be np.float64"
+        if extrinsic.shape == (4, 4):
+            extrinsic = extrinsic[:3, 3].copy()
+        assert extrinsic.shape in [
+            (3,),
+            (3, 1),
+        ], "origin/extrinsic must be a (3,) array or a (4,4) matrix"
+
+        _points = vdbfusion_pybind._VectorEigen3d(points)
+        if colors is not None:
+            _colors = vdbfusion_pybind._VectorEigen3d(colors)
+        else:
+            _colors = vdbfusion_pybind._VectorEigen3d(np.zeros((0, 3), dtype=np.float64))
+        if labels is not None:
+            _labels = np.array(labels, dtype=np.uint8)
+        else:
+            _labels = np.array([], dtype=np.uint8)
+        if min_sdf is None:
+            min_sdf = self.voxel_size
+        if max_sdf is None:
+            max_sdf = self.sdf_trunc
+        return self._volume._integrate_linear_weight(_points, _colors, _labels, extrinsic, np.float32(min_sdf), np.float32(max_sdf))
+
+
     def integrate(
         self,
         points: Optional[np.ndarray] = None,
