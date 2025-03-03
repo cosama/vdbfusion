@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-set(BOOST_URL "https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.gz")
+set(BOOST_URL "https://archives.boost.io/release/1.80.0/source/boost_1_80_0.tar.gz")
 set(BOOST_URL_SHA256 "4b2136f98bdd1f5857f1c3dea9ac2018effe65286cf251534b6ae20cc45e1847")
 set(BOOST_CONFIGURE <SOURCE_DIR>/bootstrap.sh --with-libraries=iostreams,regex)
 set(BOOST_INSTALL
