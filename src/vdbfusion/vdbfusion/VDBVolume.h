@@ -29,8 +29,44 @@
 #include <Eigen/Core>
 #include <functional>
 #include <tuple>
+#include <cmath>
 
 namespace vdbfusion {
+
+class IntersectSphere {
+public:
+    IntersectSphere(){
+        center_ = Eigen::Vector3d(0, 0, 0);
+        radius2_ = 0.0;
+        enable_ = false;
+    };
+
+    IntersectSphere(Eigen::Vector3d center, double radius, bool enable){
+        center_ = center;
+        radius2_ = radius*radius;
+        enable_ = enable;
+    };
+    ~IntersectSphere() = default;
+
+    std::pair<double, double> CalcLimits(Eigen::Vector3d origin, Eigen::Vector3d dir, double min, double max){
+        // origin is the point, dir is pointing from the actual origin towards the point
+        if(!enable_) return { min, max };  // do normal tracing
+        auto oc = (origin - center_);
+        double oc_norm2 = oc.squaredNorm();
+        double uoc = dir.dot(oc); 
+        double delta = uoc*uoc - oc_norm2 + radius2_;
+        if (delta < 0.0) return { max, min };  // no intersections
+        double sqrt_delta = std::sqrt(delta);  // this is always positive
+        double rmax = max;
+        if(oc_norm2 > radius2_){ rmax = max - uoc + sqrt_delta; };  // point is outside max is exit
+        return { max - uoc - sqrt_delta, rmax };
+    };
+
+private:
+    Eigen::Vector3d center_;
+    double radius2_;
+    bool enable_;
+};
 
 class VDBVolume {
 public:
@@ -38,6 +74,10 @@ public:
     ~VDBVolume() = default;
 
 public:
+    /// @brief limit to a sphere.
+    void SetLimitSphere(const Eigen::Vector3d center,
+                        const double radius,
+                        const bool enable);
     /// @brief Integrates a new (globally aligned) PointCloud into the current
     /// tsdf_ volume.
     void Integrate(const std::vector<Eigen::Vector3d>& points,
@@ -99,7 +139,7 @@ public:
                              std::vector<Eigen::Vector3i>,
                              std::vector<Eigen::Vector3d>,
                              std::vector<uint8_t>>
-    ExtractTriangleMesh(bool fill_holes = true, float min_weight = 0.5) const;
+    ExtractTriangleMesh(bool fill_holes = true, float min_weight = 0.5, bool face_not_vertex = false) const;
 
 public:
     /// OpenVDB Grids modeling the signed distance, weight and color
@@ -114,6 +154,7 @@ public:
     float voxel_size_;
     float sdf_trunc_;
     bool space_carving_;
+    IntersectSphere sphere_;
 };
 
 }  // namespace vdbfusion

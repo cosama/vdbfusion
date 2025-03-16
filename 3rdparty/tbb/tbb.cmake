@@ -1,6 +1,7 @@
 # MIT License
 #
-# # Copyright (c) 2022 Ignacio Vizzo, Cyrill Stachniss, University of Bonn
+# Copyright (c) 2022 Meher Malladi, Luca Lobefaro, Ignacio Vizzo, Cyrill
+# Stachniss, University of Bonn
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +25,17 @@ include(ExternalProject)
 ExternalProject_Add(
   external_tbb
   PREFIX tbb
-  URL https://github.com/nachovizzo/tbb/archive/refs/tags/tbbstatic.tar.gz
-  URL_HASH SHA256=db5ede77c4bd10ad12fab11ed38b7e8cf80aba85db16a57514073c383e6c8630
+  URL https://github.com/uxlfoundation/oneTBB/archive/refs/tags/v2022.0.0.tar.gz
+  URL_HASH SHA256=e8e89c9c345415b17b30a2db3095ba9d47647611662073f7fbf54ad48b7f3c2a
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
              ${ExternalProject_CMAKE_ARGS}
              ${ExternalProject_CMAKE_CXX_FLAGS}
              # custom flags
-             -DTBB_BUILD_TBBMALLOC=ON
-             -DTBB_BUILD_SHARED=OFF
-             -DTBB_BUILD_STATIC=ON
-             -DTBB_BUILD_TESTS=OFF)
+             -DTBB_STRICT=OFF
+             -DTBBMALLOC_BUILD=ON
+             -DBUILD_SHARED_LIBS=OFF
+             -DTBB_TEST=OFF)
 
 # Simulate importing TBB::tbb for OpenVDBHelper target
 ExternalProject_Get_Property(external_tbb INSTALL_DIR)

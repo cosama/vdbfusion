@@ -120,7 +120,7 @@ int GetCubeIndex(const openvdb::Coord& voxel,
 }
 
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3i>, std::vector<Eigen::Vector3d>, std::vector<uint8_t>>
-VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight) const {
+VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight, bool face_not_vertex) const {
     // implementation of marching cubes, based on Open3D
     std::vector<Eigen::Vector3d> vertices;
     std::vector<Eigen::Vector3i> triangles;
@@ -173,30 +173,64 @@ VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight) const {
                     point(edge_index(3)) +=
                         source_tsdf * voxel_size_ / (source_tsdf + destination_tsdf);
                     vertices.push_back(point /* + origin_*/);
-                    // colors
-                    const auto& source_color = colors_field[edge_to_vert[edge][SOURCE]];
-                    const auto& destination_color = colors_field[edge_to_vert[edge][DEST]];
-                    openvdb::Vec3f mix_color = (source_color.getVec3() + destination_color.getVec3()) / (source_color[3] + destination_color[3]);
-                    colors.push_back({mix_color[0], mix_color[1], mix_color[2]});
-                    // labels
-                    std::vector<uint8_t> all_labels;
-                    for (auto a: {SOURCE, DEST}) {
-                        int ind = indices_field[edge_to_vert[edge][a]];
-                        if (ind > -1) {
-                            auto this_labels = labels_store_[indices_field[edge_to_vert[edge][a]]];
-                            all_labels.insert(all_labels.end(), this_labels.begin(), this_labels.end());
+
+                    if( !face_not_vertex ) {
+                        // colors
+                        const auto& source_color = colors_field[edge_to_vert[edge][SOURCE]];
+                        const auto& destination_color = colors_field[edge_to_vert[edge][DEST]];
+                        openvdb::Vec3f mix_color = (source_color.getVec3() + destination_color.getVec3()) / (source_color[3] + destination_color[3]);
+                        colors.push_back({mix_color[0], mix_color[1], mix_color[2]});
+                        // labels
+                        std::vector<uint8_t> all_labels;
+                        for (auto a: {SOURCE, DEST}) {
+                            int ind = indices_field[edge_to_vert[edge][a]];
+                            if (ind > -1) {
+                                auto this_labels = labels_store_[indices_field[edge_to_vert[edge][a]]];
+                                all_labels.insert(all_labels.end(), this_labels.begin(), this_labels.end());
+                            }
                         }
+                        labels.push_back(MostCommon(all_labels));
                     }
-                    labels.push_back(MostCommon(all_labels));
                 } else {
                     edge_to_index[edge] = edgeindex_to_vertexindex.find(edge_index)->second;
                 }
             }
         }
+
+        // Triangle creation and attribute assignment
         for (int i = 0; tri_table[cube_index][i] != -1; i += 3) {
             triangles.emplace_back(edge_to_index[tri_table[cube_index][i]],
                                    edge_to_index[tri_table[cube_index][i + 2]],
                                    edge_to_index[tri_table[cube_index][i + 1]]);
+    
+            if( face_not_vertex ) {
+                // Triangle color calculation (using 4-vector accumulation)
+                openvdb::Vec4f triangle_color(0.0f, 0.0f, 0.0f, 0.0f);
+                std::vector<uint8_t> all_labels;
+        
+                for (int j : {0, 2, 1}) { // Iterate over 0, 2, 1
+                    for (int k = 0; k < 2; ++k) {
+                        int vertex_index = edge_to_vert[tri_table[cube_index][i + j]][k];
+                        openvdb::Vec4f color = colors_field[vertex_index];
+                        triangle_color += color;
+        
+                        int ind = indices_field[vertex_index];
+                        if (ind > -1) {
+                            auto this_labels = labels_store_[ind];
+                            all_labels.insert(all_labels.end(), this_labels.begin(), this_labels.end());
+                        }
+                    }
+                }
+        
+                if (triangle_color[3] > 0.0f) {
+                    auto mix_color = triangle_color.getVec3() / triangle_color[3];
+                    colors.emplace_back(mix_color[0], mix_color[1], mix_color[2]);
+                } else {
+                    colors.emplace_back(0.0f, 0.0f, 0.0f); // Handle zero weight case
+                }
+        
+                labels.emplace_back(MostCommon(all_labels));
+            }
         }
     }
     return std::make_tuple(vertices, triangles, colors, labels);

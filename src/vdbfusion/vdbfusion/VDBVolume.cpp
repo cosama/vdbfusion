@@ -89,6 +89,13 @@ VDBVolume::VDBVolume(float voxel_size, float sdf_trunc, bool space_carving /* = 
     indices_->setGridClass(openvdb::GRID_UNKNOWN);
 }
 
+void VDBVolume::SetLimitSphere(const Eigen::Vector3d center,
+                               const double radius,
+                               const bool enable) {
+    // openvdb::Vec3R center_vdb(center.x(), center.y(), center.z());
+    sphere_ = IntersectSphere(center, radius, enable);
+}
+
 void VDBVolume::UpdateTSDF(const float& sdf,
                            const openvdb::Coord& voxel,
                            const std::function<float(float)>& weighting_function) {
@@ -143,14 +150,20 @@ void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
     for (size_t i = 0; i < points.size(); ++i) {
         // Get the direction from the sensor origin to the point and normalize it
         const auto point = points[i];
-        const Eigen::Vector3d direction = point - origin;
+        Eigen::Vector3d direction = point - origin;
+        const auto depth = static_cast<float>(direction.norm());
+        direction.normalize();
         openvdb::Vec3R dir(direction.x(), direction.y(), direction.z());
-        dir.normalize();
 
         // Truncate the Ray before and after the source unless space_carving_ is specified.
-        const auto depth = static_cast<float>(direction.norm());
-        const float t0 = space_carving_ ? 0.0f : depth - sdf_trunc_;
-        const float t1 = depth + sdf_trunc_;
+        float t0 = space_carving_ ? 0.0f : depth - sdf_trunc_;
+        float t1 = depth + sdf_trunc_;
+
+        // calculate if beam intersects with the limit sphere, we only track through the sphere
+        auto p = sphere_.CalcLimits(origin + direction*t1, direction, t0, t1);
+        if(p.first > p.second) continue;  // no intersection
+        t0 = p.first;
+        t1 = p.second;
 
         // Create one DDA per ray(per thread), the ray must operate on voxel grid coordinates.
         const auto ray = openvdb::math::Ray<float>(eye, dir, t0, t1).worldToIndex(*tsdf_);

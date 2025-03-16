@@ -56,6 +56,9 @@ class VDBVolume:
             f"space_carving = {self.space_carving}\n"
         )
 
+    def set_limit_sphere(self, center, radius, enabled) -> None:
+        self._volume._limit_sphere(center, radius, enabled)
+
     @overload
     def integrate(
         self,
@@ -182,7 +185,7 @@ class VDBVolume:
             return self._volume._update_tsdf(sdf, ijk, weighting_function)
         return self._volume._update_tsdf(sdf, ijk)
 
-    def extract_triangle_mesh(self, fill_holes: bool = True, min_weight: float = 0.0) -> Tuple:
+    def extract_triangle_mesh(self, fill_holes: bool = True, min_weight: float = 0.0, face_not_vertex: bool = False) -> Tuple:
         """Returns a the vertices and triangles representing the constructed the TriangleMesh.
 
         If you can afford to use Open3D as dependency just pass the output of this function to the
@@ -195,7 +198,7 @@ class VDBVolume:
         )
         mesh.vertex_colors = o3d.utility.Vector3dVector(colors)
         """
-        vertices, triangles, colors, labels = self._volume._extract_triangle_mesh(fill_holes, min_weight)
+        vertices, triangles, colors, labels = self._volume._extract_triangle_mesh(fill_holes, min_weight, face_not_vertex)
         return np.asarray(vertices), np.asarray(triangles), np.asarray(colors), np.asarray(labels)
 
     def write_vdb_grids(self, out_file: str) -> None:

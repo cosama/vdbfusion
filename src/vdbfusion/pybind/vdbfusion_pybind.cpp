@@ -96,6 +96,12 @@ PYBIND11_MODULE(vdbfusion_pybind, m) {
         .def(py::init<float, float, bool>(), "voxel_size"_a, "sdf_trunc"_a,
              "space_carving"_a = false)
         // TODO: add support for this
+        .def(
+            "_limit_sphere",
+            [](VDBVolume& self, const Eigen::Vector3d center, const double radius, const bool enable) {
+                self.SetLimitSphere(center, radius, enable);
+            },
+            "center"_a, "radius"_a, "enable"_a)
         .def("_integrate",
              py::overload_cast<const std::vector<Eigen::Vector3d>&,
                                const std::vector<Eigen::Vector3d>&,
@@ -169,7 +175,7 @@ PYBIND11_MODULE(vdbfusion_pybind, m) {
             },
             "sdf"_a, "ijk"_a)
         .def("_extract_triangle_mesh", &VDBVolume::ExtractTriangleMesh, "fill_holes"_a,
-             "min_weight"_a)
+             "min_weight"_a, "face_not_vertex"_a)
         .def(
             "_write_vdb_grids",
             [](const VDBVolume& self, const std::string& filename) {

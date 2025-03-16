@@ -41,7 +41,8 @@ ExternalProject_Add(
   BUILD_IN_SOURCE true
   CONFIGURE_COMMAND "${BOOST_CONFIGURE}"
   BUILD_COMMAND ""
-  INSTALL_COMMAND "${BOOST_INSTALL}")
+  INSTALL_COMMAND "${BOOST_INSTALL}"
+  UPDATE_COMMAND "")
 
 # Simulate importing Boost::iostreams for OpenVDBHelper target
 ExternalProject_Get_Property(external_boost INSTALL_DIR)
