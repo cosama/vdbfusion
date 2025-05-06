@@ -21,6 +21,9 @@
 # SOFTWARE.
 
 include(ExternalProject)
+
+message("CMAKE ARGS", ${ExternalProject_CMAKE_ARGS})
+message("CXX FLAGS", ${ExternalProject_CMAKE_CXX_FLAGS})
 ExternalProject_Add(
   external_blosc
   PREFIX blosc
@@ -31,6 +34,7 @@ ExternalProject_Add(
              ${ExternalProject_CMAKE_ARGS}
              ${ExternalProject_CMAKE_CXX_FLAGS}
              # Custom OpenVDB build settings
+             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
              -DBUILD_STATIC=ON
              -DBUILD_TESTS=OFF
              -DBUILD_BENCHMARKS=OFF
