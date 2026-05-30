@@ -106,9 +106,9 @@ class VDBVolume:
         else:
             _colors = vdbfusion_pybind._VectorEigen3d(np.zeros((0, 3), dtype=np.float64))
         if labels is not None:
-            _labels = np.array(labels, dtype=np.uint8)
+            _labels = np.array(labels, dtype=np.int16)
         else:
-            _labels = np.array([], dtype=np.uint8)
+            _labels = np.array([], dtype=np.int16)
         if min_sdf is None:
             min_sdf = self.voxel_size
         if max_sdf is None:
@@ -156,9 +156,9 @@ class VDBVolume:
             else:
                 _colors = vdbfusion_pybind._VectorEigen3d(np.zeros((0, 3), dtype=np.float64))
             if labels is not None:
-                _labels = np.array(labels, dtype=np.uint8)
+                _labels = np.array(labels, dtype=np.int16)
             else:
-                _labels = np.array([], dtype=np.uint8)
+                _labels = np.array([], dtype=np.int16)
             if weighting_function is not None:
                 return self._volume._integrate(_points, _colors, _labels, extrinsic, weighting_function)
             if weight is not None:

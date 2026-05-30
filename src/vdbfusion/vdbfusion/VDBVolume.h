@@ -82,7 +82,7 @@ public:
     /// tsdf_ volume.
     void Integrate(const std::vector<Eigen::Vector3d>& points,
                    const std::vector<Eigen::Vector3d>& colors,
-                   const std::vector<uint8_t>& labels,
+                   const std::vector<int16_t>& labels,
                    const Eigen::Vector3d& origin,
                    const std::function<float(float)>& weighting_function);
 
@@ -92,7 +92,7 @@ public:
                    const std::vector<Eigen::Vector3d>& colors,
                    const Eigen::Vector3d& origin,
                    const std::function<float(float)>& weighting_function) {
-        Integrate(points, colors, std::vector<uint8_t>(), origin, weighting_function);
+        Integrate(points, colors, std::vector<int16_t>(), origin, weighting_function);
     }
 
     /// @brief Integrates a new (globally aligned) PointCloud into the current
@@ -138,7 +138,7 @@ public:
     [[nodiscard]] std::tuple<std::vector<Eigen::Vector3d>,
                              std::vector<Eigen::Vector3i>,
                              std::vector<Eigen::Vector3d>,
-                             std::vector<uint8_t>>
+                             std::vector<int16_t>>
     ExtractTriangleMesh(bool fill_holes = true, float min_weight = 0.5, bool face_not_vertex = false) const;
 
 public:
@@ -148,7 +148,7 @@ public:
     openvdb::Vec3fGrid::Ptr colors_;
     openvdb::FloatGrid::Ptr colors_weights_;
     openvdb::Int64Grid::Ptr indices_;
-    std::vector<std::vector<uint8_t>> labels_store_;
+    std::vector<std::vector<int16_t>> labels_store_;
 
     /// VDBVolume public properties
     float voxel_size_;

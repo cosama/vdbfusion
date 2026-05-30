@@ -121,7 +121,7 @@ void VDBVolume::Integrate(openvdb::FloatGrid::Ptr grid,
 
 void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
                           const std::vector<Eigen::Vector3d>& colors,
-                          const std::vector<uint8_t>& labels,
+                          const std::vector<int16_t>& labels,
                           const Eigen::Vector3d& origin,
                           const std::function<float(float)>& weighting_function) {
     if (points.empty()) {
@@ -184,7 +184,7 @@ void VDBVolume::Integrate(const std::vector<Eigen::Vector3d>& points,
                         colors_weights_acc.setValue(voxel, colors_weights_acc.getValue(voxel) + weight);
                     }
                 }
-                if (has_labels) {
+                if (has_labels && labels[i] >= 0) {  // labels[i] < 0 means undefined: skip
                     bool is_active = indices_acc.isValueOn(voxel);
                     if (is_active) labels_store_[indices_acc.getValue(voxel)].push_back(labels[i]);
                     else {

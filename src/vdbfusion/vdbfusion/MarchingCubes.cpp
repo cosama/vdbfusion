@@ -62,8 +62,8 @@ static constexpr int const DEST = 1;
 template <typename T>
 using Accessor = typename openvdb::tree::ValueAccessor<T, true>;
 
-uint8_t MostCommon(std::vector<uint8_t> store) {
-    std::unordered_map<uint8_t, int> counts;
+int16_t MostCommon(std::vector<int16_t> store) {
+    std::unordered_map<int16_t, int> counts;
     for (auto it = store.begin(); it != store.end(); ++it) {
         if (counts.find(*it) != counts.end()) {
             ++counts[*it];
@@ -72,7 +72,7 @@ uint8_t MostCommon(std::vector<uint8_t> store) {
             counts[*it] = 1;
         }
     }
-    uint8_t max_key = 255;
+    int16_t max_key = -1;  // no labels accumulated: undefined
     int max_count = 0;
     for (auto c: counts) {
         if (c.second > max_count) { max_key = c.first; max_count = c.second; }
@@ -119,13 +119,13 @@ int GetCubeIndex(const openvdb::Coord& voxel,
     return cube_index;
 }
 
-std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3i>, std::vector<Eigen::Vector3d>, std::vector<uint8_t>>
+std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3i>, std::vector<Eigen::Vector3d>, std::vector<int16_t>>
 VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight, bool face_not_vertex) const {
     // implementation of marching cubes, based on Open3D
     std::vector<Eigen::Vector3d> vertices;
     std::vector<Eigen::Vector3i> triangles;
     std::vector<Eigen::Vector3d> colors;
-    std::vector<uint8_t> labels;
+    std::vector<int16_t> labels;
 
     double half_voxel_length = voxel_size_ * 0.5;
     // Map of "edge_index = (x, y, z, 0) + edge_shift" to "global vertex index"
@@ -181,7 +181,7 @@ VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight, bool face_not_
                         openvdb::Vec3f mix_color = (source_color.getVec3() + destination_color.getVec3()) / (source_color[3] + destination_color[3]);
                         colors.push_back({mix_color[0], mix_color[1], mix_color[2]});
                         // labels
-                        std::vector<uint8_t> all_labels;
+                        std::vector<int16_t> all_labels;
                         for (auto a: {SOURCE, DEST}) {
                             int ind = indices_field[edge_to_vert[edge][a]];
                             if (ind > -1) {
@@ -206,7 +206,7 @@ VDBVolume::ExtractTriangleMesh(bool fill_holes, float min_weight, bool face_not_
             if( face_not_vertex ) {
                 // Triangle color calculation (using 4-vector accumulation)
                 openvdb::Vec4f triangle_color(0.0f, 0.0f, 0.0f, 0.0f);
-                std::vector<uint8_t> all_labels;
+                std::vector<int16_t> all_labels;
         
                 for (int j : {0, 2, 1}) { // Iterate over 0, 2, 1
                     for (int k = 0; k < 2; ++k) {

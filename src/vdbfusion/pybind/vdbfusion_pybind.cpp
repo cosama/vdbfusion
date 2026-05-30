@@ -105,7 +105,7 @@ PYBIND11_MODULE(vdbfusion_pybind, m) {
         .def("_integrate",
              py::overload_cast<const std::vector<Eigen::Vector3d>&,
                                const std::vector<Eigen::Vector3d>&,
-                               const std::vector<uint8_t>&,
+                               const std::vector<int16_t>&,
                                const Eigen::Vector3d&,
                                const std::function<float(float)>&>(&VDBVolume::Integrate),
              "points"_a, "colors"_a, "labels"_a, "origin"_a, "weighting_function"_a)
@@ -113,7 +113,7 @@ PYBIND11_MODULE(vdbfusion_pybind, m) {
             "_integrate",
             [](VDBVolume& self, const std::vector<Eigen::Vector3d>& points,
                const std::vector<Eigen::Vector3d>& colors,
-               const std::vector<uint8_t>& labels,
+               const std::vector<int16_t>& labels,
                const Eigen::Vector3d& origin, float weight) {
                 self.Integrate(points, colors, labels, origin, [=](float /*sdf*/) { return weight; });
             },
@@ -121,7 +121,7 @@ PYBIND11_MODULE(vdbfusion_pybind, m) {
         .def("_integrate",
             [](VDBVolume& self, const std::vector<Eigen::Vector3d>& points,
                const std::vector<Eigen::Vector3d>& colors,
-               const std::vector<uint8_t>& labels,
+               const std::vector<int16_t>& labels,
                const Eigen::Vector3d& origin) {
                 self.Integrate(points, colors, labels, origin, [](float /*sdf*/) { return 1.0f; });
             },
@@ -129,7 +129,7 @@ PYBIND11_MODULE(vdbfusion_pybind, m) {
         .def("_integrate_linear_weight",
             [](VDBVolume& self, const std::vector<Eigen::Vector3d>& points,
                const std::vector<Eigen::Vector3d>& colors,
-               const std::vector<uint8_t>& labels,
+               const std::vector<int16_t>& labels,
                const Eigen::Vector3d& origin,
                const float sdf_min,
                const float sdf_max) {
